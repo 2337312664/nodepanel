@@ -34,10 +34,25 @@ bash <(curl -fsSL https://raw.githubusercontent.com/2337312664/nodepanel/main/in
 
 ### NAT / 端口受限服务器
 
+商家只映射了固定端口时（例如后台写着 `20001→20001` 和 `20002→20002`），
+**三个端口都要显式指定**，否则面板会随机取端口、外部访问不了：
+
 ```bash
-IVPN_NAT_MODE=1 IVPN_LISTEN_PORT=20002 IVPN_PUBLIC_PORT=20002 \
+IVPN_NAT_MODE=1 \
+IVPN_PANEL_PORT=20001 \
+IVPN_LISTEN_PORT=20002 \
+IVPN_PUBLIC_PORT=20002 \
   bash <(curl -fsSL https://raw.githubusercontent.com/2337312664/nodepanel/main/install-webui.sh)
 ```
+
+| 变量 | 含义 | 必填 |
+| --- | --- | --- |
+| `IVPN_PANEL_PORT` | **面板**监听与访问的端口 | 端口受限时必填 |
+| `IVPN_LISTEN_PORT` | 内核实际监听的**内网**端口 | 端口受限时必填 |
+| `IVPN_PUBLIC_PORT` | 客户端连接的**公网**端口 | 与上面不同时必填 |
+
+`IVPN_LISTEN_PORT` 与 `IVPN_PUBLIC_PORT` 不同时（例如商家写 `20002→10000`），
+监听端口填 10000、公网端口填 20002，分享链接里写的是后者。
 
 ### 有域名：签可信证书（DNS-01）
 
