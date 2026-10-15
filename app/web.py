@@ -15,7 +15,7 @@ from fastapi.responses import RedirectResponse
 from fastapi.templating import Jinja2Templates
 from itsdangerous import BadSignature, URLSafeSerializer, URLSafeTimedSerializer
 
-from . import db, links, singbox, system_ops
+from . import brand, db, links, singbox, system_ops
 
 BASE_DIR = Path(__file__).resolve().parent
 SECRET_FILE = db.DATA_ROOT / 'web' / 'session.secret'
