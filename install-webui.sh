@@ -50,7 +50,7 @@ CF_TOKEN="${IVPN_CF_TOKEN:-}"
 # 重新生成清单，再把这里的值替换成新的。
 #
 # 这些都可以用环境变量覆盖（例如在线安装器传入自己核验过的摘要）。
-RELEASE_TAG="${IVPANEL_RELEASE_TAG:-v1.0.2}"
+RELEASE_TAG="${IVPANEL_RELEASE_TAG:-v1.0.3}"
 ASSET_SOURCE_SHA256="${IVPN_REPO_ZIP_SHA256:-d7adc51b56fa6952fc30491a1352eb0daf6558c1931271d2ffabb66a43135acf}"
 ASSET_SINGBOX_VERSION="${IVPANEL_SINGBOX_VERSION:-1.14.2}"
 ASSET_SINGBOX_SHA256_AMD64="${IVPN_SINGBOX_SHA256_AMD64:-7015a04bd65be428c710bfaa03eb5f97f7019ab24a8f8f43b4d0aa82713a2987}"
@@ -94,6 +94,9 @@ LE_ACTIVE=""          # setup_letsencrypt 成功签发后置 1，控制结尾是
 # 置 1 时跳过 Let's Encrypt，面板改用自签证书（浏览器会有证书警告，属预期）。
 IVPN_NAT_MODE="${IVPN_NAT_MODE:-0}"
 # 内核监听端口与对外映射端口（NAT 下两者不同）。留空即用协议默认端口。
+# 面板端口：端口受限（NAT）机器必须与商家映射的公网端口一致，
+# 否则面板装完外部访问不了。留空则随机取 20000-60000 之间的空闲端口。
+IVPN_PANEL_PORT="${IVPN_PANEL_PORT:-}"
 IVPN_LISTEN_PORT="${IVPN_LISTEN_PORT:-}"
 IVPN_PUBLIC_PORT="${IVPN_PUBLIC_PORT:-}"
 ADMIN_PASS=""
@@ -547,6 +550,8 @@ resolve_identity(){
     PANEL_PORT="$(jq -r '.panel_port // empty' "${WEB_DATA_DIR}/settings.json" 2>/dev/null)"
     ASSET_PATH="$(jq -r '.asset_path // empty' "${WEB_DATA_DIR}/settings.json" 2>/dev/null)"
     [[ -z "$LOGIN_PATH" ]] && LOGIN_PATH="login-$(openssl rand -hex 16)"
+    # 显式指定优先于已有配置，便于迁移到新的端口映射。
+    [[ -n "$IVPN_PANEL_PORT" ]] && PANEL_PORT="$IVPN_PANEL_PORT"
     [[ -z "$PANEL_PORT" ]] && PANEL_PORT="$(random_port 80)"
     [[ "$ASSET_PATH" =~ ^assets-[0-9a-fA-F]{32}$ ]] \
       || ASSET_PATH="assets-$(openssl rand -hex 16)"
@@ -564,8 +569,17 @@ resolve_identity(){
     LOGIN_PATH="login-$(openssl rand -hex 16)"
     ASSET_PATH="assets-$(openssl rand -hex 16)"
     ADMIN_PASS="$(gen_secret 18)"
-    # Use a random management port and login path; reserve port 80 for ACME.
-    PANEL_PORT="$(random_port 80)"
+    # 面板端口：显式指定优先（端口受限环境必须），否则随机取一个空闲高位端口。
+    # 端口 80 留给 ACME 验证，不能占用。
+    if [[ -n "$IVPN_PANEL_PORT" ]]; then
+      PANEL_PORT="$IVPN_PANEL_PORT"
+      [[ "$PANEL_PORT" =~ ^[0-9]+$ ]] && (( PANEL_PORT >= 1 && PANEL_PORT <= 65535 )) \
+        || die "IVPN_PANEL_PORT 必须是 1-65535 之间的数字。"
+      [[ "$PANEL_PORT" == "80" ]] && die "80 端口留给证书续期，请换一个。"
+      port_in_use "$PANEL_PORT" && die "${PANEL_PORT} 端口已被占用，请换一个。"
+    else
+      PANEL_PORT="$(random_port 80)"
+    fi
   fi
 
   mkdir -p "$WEB_DATA_DIR"
