@@ -1,0 +1,11 @@
+# 发布签名私钥 —— 丢失将无法发布更新，泄露将危及全部用户
+nodepanel-release-private.pem
+*.pem.key
+# 构建产物
+build/
+release-dist/
+# 本地环境
+.env
+*.log
+__pycache__/
+*.pyc

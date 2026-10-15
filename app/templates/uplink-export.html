@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}中转接入参数{% endblock %}
+{% block content %}
+
+<div class="card">
+  <h1 class="card-title">中转接入参数</h1>
+  <p class="card-note">
+    本机已作为<b>落地机</b>准备好。把下面这些值填到<b>入口机</b>的
+    「设置 → 高级设置 → 中转落地」里，那台机器上的用户流量就会经过本机出网。
+  </p>
+  <p class="kv-muted">协议：<b>{{ tech_name }}</b>　·　中转用户：<b>{{ client_name }}</b></p>
+
+  <div class="export-table">
+    {% for key, value in values.items() %}
+    <div class="export-row">
+      <div class="export-label">
+        <code>{{ key }}</code>
+      </div>
+      <div class="export-value">
+        <input type="text" value="{{ value }}" readonly
+               onclick="this.select()" aria-label="{{ key }}">
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <details class="export-json">
+    <summary>一次性复制全部（按入口机的字段名）</summary>
+    <pre id="export-json-text">{{ values | tojson(indent=2) }}</pre>
+    <button class="button secondary compact" type="button"
+            data-copy-target="#export-json-text">复制</button>
+  </details>
+
+  <div class="export-notes">
+    <h2>注意事项</h2>
+    <ul>
+      {% for note in notes %}
+      <li>{{ note }}</li>
+      {% endfor %}
+    </ul>
+  </div>
+
+  <a class="button secondary compact" href="/settings">返回设置</a>
+</div>
+
+{% endblock %}
