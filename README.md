@@ -1,167 +1,222 @@
+<div align="center">
+
 # NodePanel
 
-自建 sing-box 的节点管理面板。给一台自己的 VPS 装上，用网页管理连接、用户和订阅，
-不需要敲命令。
+**自建 VPN 面板 —— 一条命令装好，网页上点几下就能用**
 
-> **第一次安装？** 看 [安装指南](INSTALL.md) —— 手把手步骤，不需要 Linux 经验。
-> 下面是给开发者和运维看的速查。
+给家人朋友分连接，不需要懂 Linux
 
-## 特点
+[![许可证](https://img.shields.io/badge/许可证-GPL--3.0-blue)](LICENSE)
+![系统](https://img.shields.io/badge/系统-Debian%2012%2B%20%7C%20Ubuntu%2022.04%2B-orange)
+![架构](https://img.shields.io/badge/架构-x86__64%20%7C%20ARM64-green)
 
-- **一条安装命令**，装完给一个网址就能用；证书、防火墙、协议参数全自动配置
-- **两个出口功能**，各自独立、可以叠加
-  - **住宅代理落地** —— 出网流量交给 SOCKS5 / HTTP 代理，网站看到的是代理的 IP
-  - **中转落地** —— 本机作为入口机，把流量推给另一台落地机，由它出网
-- **智能订阅** —— 同一个链接，Karing / sing-box / v2rayN 拿完整配置，
-  Clash Verge 拿 Clash 配置，也可加 `?target=clash` 强制指定
-- **适配受限环境** —— 公网 IPv4、端口受限（NAT）、容器均可部署
-- **凭据签名更新** —— 每次更新校验 Ed25519 签名与逐文件 SHA-256
+[快速开始](#快速开始) · [安装指南](INSTALL.md) · [常见问题](INSTALL.md#常见问题) · [扩展功能](#扩展功能)
 
-## 环境要求
+</div>
 
-| 项目 | 要求 |
-| --- | --- |
-| 系统 | Debian 12+ / Ubuntu 22.04+，需 systemd |
-| 架构 | x86_64 或 ARM64 |
-| 内存 | 1GB 建议；512MB 可用 |
-| 网络 | 公网 IPv4；端口受限环境见下文 |
-| 端口 | `80/TCP`（证书）、`443/TCP`+`443/UDP`（协议）、面板端口 |
+---
 
-## 安装
+![概览](docs/images/dashboard.png)
 
-**没有 Linux 经验？** 看 [安装指南](INSTALL.md)（手把手，含截图级说明）。
+---
 
-### 普通服务器（有公网 IP）
+## 这是什么
+
+把你自己的服务器变成一台专属 VPN。装好之后你会得到一个网页，在上面：
+
+- **添加用户** —— 起个名字，系统自动生成连接
+- **发给家人** —— 一条教程链接 + 一个访问码，对方照着页面就能装好
+- **看用量** —— 谁在线、用了多少流量、上次什么时候连的
+
+你只需要一台服务器。其他都是自动的。
+
+## 为什么用它
+
+| | 现成的机场 | 手动搭建 | **NodePanel** |
+| :--- | :---: | :---: | :---: |
+| 服务器属于谁 | 机场主 | 你自己 | **你自己** |
+| 需要懂技术吗 | 不需要 | 要会 Linux | **不需要** |
+| 流量经过谁 | 机场主 | 只有你 | **只有你** |
+| 跑路 / 被封风险 | 有 | 没有 | **没有** |
+| 给家人用 | 各自买 | 逐个配 | **网页上点几下** |
+| 费用 | 按月付费 | 只付服务器 | **只付服务器** |
+
+## 快速开始
+
+在一台 **Debian 12 / Ubuntu 22.04** 的服务器上，用 root 执行：
+
+```bash
+bash <(curl -fsSL https://raw.githubusercontent.com/2337312664/nodepanel/main/install.sh)
+```
+
+会问你几个问题（服务器是什么类型、端口怎么填），然后自动装好。
+**大约 5 分钟**，结束时给出面板地址和密码。
+
+<details>
+<summary><b>不想用向导？直接安装</b></summary>
 
 ```bash
 bash <(curl -fsSL https://raw.githubusercontent.com/2337312664/nodepanel/main/install-webui.sh)
 ```
 
-自动申请 Let's Encrypt 证书、配置防火墙、启动服务。结束时打印访问地址与密码
-—— **密码只显示这一次**。
+端口受限（NAT）的服务器需要多指定几个端口，见 [安装指南](INSTALL.md)。
+</details>
 
-### 端口受限（NAT）服务器
+> **完全不懂 Linux？** 看 [安装指南](INSTALL.md) —— 从怎么连服务器开始讲。
 
-商家共享 IP、只映射若干高位端口时，必须先看**商家后台的端口映射**，
-把三个端口都填上，否则面板取随机端口、外部访问不了：
+## 功能
 
-```bash
-IVPN_NAT_MODE=1 \
-IVPN_PANEL_PORT=20001 \
-IVPN_LISTEN_PORT=20002 \
-IVPN_PUBLIC_PORT=20002 \
-  bash <(curl -fsSL https://raw.githubusercontent.com/2337312664/nodepanel/main/install-webui.sh)
-```
+<table>
+<tr>
+<td width="50%" valign="top">
 
-| 变量 | 含义 | 说明 |
-| --- | --- | --- |
-| `IVPN_NAT_MODE` | 开启受限环境适配 | 跳过 ACME（宿主机占着 80 端口，HTTP-01 无法通过），改用自签证书 |
-| `IVPN_PANEL_PORT` | 面板端口 | 必须与商家映射的公网端口一致 |
-| `IVPN_LISTEN_PORT` | 内核监听的内网端口 | 即商家写的「容器端口」 |
-| `IVPN_PUBLIC_PORT` | 客户端连接的公网端口 | 分享链接里使用这个 |
+**管理**
 
-`IVPN_LISTEN_PORT` 与 `IVPN_PUBLIC_PORT` 不同时（例如商家写 `20002→10000`），
-监听填 `10000`、公网填 `20002`。面板会在分享链接里写后者。
+- 用户增删、暂停、恢复
+- 一键重置某个人的连接
+- 教程链接 + 访问码分离发送
+- 流量统计与在线状态
 
-### 有域名：申请可信证书
+</td>
+<td width="50%" valign="top">
 
-有域名（Cloudflare 托管）可以走 DNS-01，不需要任何入站端口就能拿到
-Let's Encrypt 证书，浏览器不再报警告：
+**连接**
 
-```bash
-IVPN_NAT_MODE=1 \
-IVPANEL_CERT_DOMAIN="panel.example.com" \
-IVPN_CF_TOKEN="<Cloudflare API Token>" \
-IVPN_PANEL_PORT=20001 \
-IVPN_LISTEN_PORT=20002 \
-IVPN_PUBLIC_PORT=20002 \
-  bash <(curl -fsSL https://raw.githubusercontent.com/2337312664/nodepanel/main/install-webui.sh)
-```
+- VLESS + REALITY（主力，最难被识别）
+- Hysteria2（弱网 / 丢包时用）
+- AnyTLS、TUIC（兼容备用）
+- 智能订阅：一条链接适配所有客户端
 
-Token 需要 `Zone → DNS → Edit` 权限。安装器会一并配置好每天两次的自动续期。
+</td>
+</tr>
+<tr>
+<td valign="top">
 
-> 访问时端口号仍需带上（`https://panel.example.com:20001`）。
-> 想去掉端口，需要把宿主机 443 映射到容器，这取决于服务商。
+**维护**
 
-### 安装参数汇总
+- 面板内一键检查并修复
+- 面板内一键更新（带签名校验）
+- 命令行救援（忘记密码等）
+- 备份与恢复
 
-所有参数都可通过环境变量覆盖，便于私有部署或并行测试：
+</td>
+<td valign="top">
 
-| 变量 | 默认值 | 用途 |
-| --- | --- | --- |
-| `IVPN_PRODUCT_NAME` | `NodePanel` | 界面显示名 |
-| `IVPN_CLI_NAME` | `nodepanel` | CLI 命令名 |
-| `IVPANEL_DATA_DIR` | `/etc/nodepanel` | 数据目录 |
-| `IVPANEL_APP_DIR` | `/opt/nodepanel` | 程序目录 |
-| `IVPANEL_CERT_STORE` | `/etc/nodepanel-cert` | 证书库 |
-| `IVPANEL_WEB_USER` | `nodepanel-web` | 面板服务用户 |
-| `IVPANEL_SB_USER` | `nodepanel-sb` | 内核服务用户 |
-| `IVPANEL_REPO` | `2337312664/nodepanel` | 下载源码与内核的仓库 |
-| `IVPANEL_UPDATE_REPO` | 同上 | 面板内更新检查的仓库 |
+**部署**
+
+- 自动申请 HTTPS 证书
+- 自动配置防火墙
+- 自动开启 BBR 加速
+- 支持公网 IP / NAT / 容器
+
+</td>
+</tr>
+</table>
+
+## 界面
+
+<table>
+<tr>
+<td width="50%"><img src="docs/images/users.png" alt="用户管理"></td>
+<td width="50%"><img src="docs/images/settings.png" alt="设置"></td>
+</tr>
+<tr>
+<td align="center"><b>用户管理</b><br>每人独立的教程链接与订阅</td>
+<td align="center"><b>设置</b><br>协议、证书、端口一目了然</td>
+</tr>
+</table>
+
+## 客户端支持
+
+| 平台 | 推荐 | 说明 |
+| :--- | :--- | :--- |
+| iPhone / iPad | Karing、sing-box MT | 面板里有下载按钮 |
+| Android | Karing、v2rayNG | |
+| Windows | sing-box、v2rayN | |
+| macOS | sing-box、v2rayN | |
+| Clash Verge | 也支持 | 面板会返回 Clash 配置 |
+
+**同一条订阅链接通用** —— 客户端自己识别格式，不用分别发。
 
 ## 常用命令
 
-装完后可用 `nodepanel`：
+装完后 SSH 到服务器可以执行：
 
 | 命令 | 作用 |
-| --- | --- |
-| `nodepanel info` | 查看面板地址、账号、需要放行的端口 |
+| :--- | :--- |
+| `nodepanel info` | 查看访问地址、账号、要放行的端口 |
 | `nodepanel reset-password` | 重置管理密码 |
-| `nodepanel reset-path` | 更换面板登录地址 |
+| `nodepanel reset-path` | 换一个登录地址 |
 | `nodepanel repair` | 连不上时重建配置并重启 |
-| `nodepanel backup [路径]` | 备份全部用户与设置 |
-| `nodepanel restore <路径>` | 从备份恢复 |
-| `nodepanel relay <类型> <地址> <端口>` | 设置住宅代理出口 |
-| `nodepanel uplink <协议> <地址> <端口>` | 设置中转落地 |
-| `nodepanel nat --show` | 查看 NAT 端口映射 |
+| `nodepanel backup` | 备份全部用户和设置 |
 
-## 出口配置
+完整列表见 [安装指南](INSTALL.md#常用命令)。
 
-### 住宅代理落地
+## 扩展功能
 
-面板「设置 → 高级设置 → 住宅代理落地」，或：
+<details>
+<summary><b>住宅代理落地</b> —— 让网站看到的 IP 是住宅代理</summary>
+
+出网流量交给上游 SOCKS5 / HTTP 代理，**用户的连接方式和订阅链接都不变**。
+
+面板「设置 → 高级设置 → 住宅代理落地」，或命令行：
 
 ```bash
 nodepanel relay socks5 proxy.example.com 1080 --username U --password P
-nodepanel relay --off          # 关闭，恢复直连
+nodepanel relay --off      # 关闭，恢复直连
 ```
+</details>
 
-### 中转落地
+<details>
+<summary><b>中转落地</b> —— 本机作为入口机，把流量推给另一台落地机</summary>
 
-两台机器：入口机（给用户连）+ 落地机（负责出网）。
+适合「入口机线路好但会被封，落地机干净」的场景。两台都装本面板：
 
-1. 落地机上：面板「我是落地机，导出接入参数」→ 拿到参数
-2. 入口机上：面板「中转落地」→ 填入 → 保存
+1. **落地机**上点「我是落地机，导出接入参数」，拿到参数
+2. **入口机**上填进「中转落地」
 
 ```bash
 nodepanel uplink vless-reality <落地机IP> 443 --uuid U --sni S --public-key K --short-id I
 nodepanel uplink --off
 ```
 
-两者可叠加：`用户 → 入口机 → 落地机 → 住宅代理 → 目标`。
-
-## 客户端
-
-| 平台 | 推荐 |
-| --- | --- |
-| iOS | Karing、sing-box MT |
-| Android | Karing、v2rayNG |
-| Windows / macOS | sing-box、v2rayN |
-
-Clash Verge 也支持（面板会按 UA 返回 Clash 配置）。
+两个功能可**叠加**：`用户 → 入口机 → 落地机 → 住宅代理 → 目标`
+</details>
 
 ## 安全设计
 
-- 面板以非特权用户运行，特权操作经 Unix socket 交给一个**只接受白名单操作**的 root helper
-- sing-box 内核独立低权限运行 + systemd 沙箱，配置以只读方式挂载给它
-- 数据库仅面板可读写；私钥 `0640` 限同组
-- 密码 bcrypt 哈希；登录失败限流并临时锁定；表单带 CSRF 防护
-- 更新走 Ed25519 签名 + 逐文件 SHA-256 双重校验，失败自动回滚
-- 防火墙操作限定在协议端口白名单内
+- 面板以**非特权用户**运行；特权操作经过一个只接受白名单命令的 root helper
+- 代理内核**独立低权限**运行，配置只读挂载
+- 密码 bcrypt 哈希，登录失败限流并临时锁定
+- 更新走 **Ed25519 签名 + 逐文件 SHA-256** 双重校验，失败自动回滚
+- 未登录访问任何受保护路径统一返回 404
+
+## 环境要求
+
+| 项目 | 要求 |
+| :--- | :--- |
+| 系统 | Debian 12+ / Ubuntu 22.04+（需 systemd） |
+| 架构 | x86_64 或 ARM64 |
+| 内存 | 1GB 建议；512MB 可用 |
+| 网络 | 公网 IPv4；端口受限环境见 [安装指南](INSTALL.md) |
+
+## 遇到问题
+
+1. **面板打不开** —— 多半是端口没在商家后台放行（[排查](INSTALL.md#面板打不开)）
+2. **客户端连不上** —— 检查协议端口是否放行；或在首页点「检查并修复」
+3. **忘记密码** —— SSH 执行 `nodepanel reset-password`
+
+更多见 [安装指南的常见问题](INSTALL.md#常见问题)。
 
 ## 许可
 
-基于 [iwantruncom/renrenVPN](https://github.com/iwantruncom/renrenVPN)（GPL-3.0）
-修改而来，遵循 **GPL-3.0**。完整第三方许可见 `NOTICE.md`。
+基于 [iwantruncom/renrenVPN](https://github.com/iwantruncom/renrenVPN)（GPL-3.0）修改而来，
+以 **GPL-3.0** 分发。第三方依赖与致谢见 [NOTICE.md](NOTICE.md)。
 
 自用不受限制；对外分发时须保留许可声明并提供完整源码。
+
+---
+
+<div align="center">
+<sub>如果你觉得有用，欢迎点个 Star ⭐</sub>
+</div>

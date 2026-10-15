@@ -4,6 +4,27 @@
 
 ---
 
+## 最快的方式：用安装向导
+
+连上服务器后，只需要敲这一行：
+
+```bash
+bash <(curl -fsSL https://raw.githubusercontent.com/2337312664/nodepanel/main/install.sh)
+```
+
+它会把该问的都问一遍（服务器是什么类型、端口怎么填），
+然后自动装好。**不想读长文档的话，用这个就够了。**
+
+> 想先看看它会执行什么命令，不加参数跑一次：加 `--dry-run`
+>
+> ```bash
+> bash <(curl -fsSL https://raw.githubusercontent.com/2337312664/nodepanel/main/install.sh) --dry-run
+> ```
+
+下面是从头开始的完整步骤 —— 第一次接触服务器的话，建议照顺序看一遍。
+
+---
+
 ## 开始之前
 
 你需要准备：

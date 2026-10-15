@@ -15,7 +15,7 @@ umask 077
 REPO="${IVPN_REPO:-${IVPANEL_REPO:-2337312664/nodepanel}}"
 # 默认从本仓库的 Release 取源码包（已被签名清单记录摘要）。
 # RELEASE_TAG 必须在 REPO_ZIP_URL 之前定义 —— 后者引用它拼下载地址。
-RELEASE_TAG="${IVPANEL_RELEASE_TAG:-v1.0.5}"
+RELEASE_TAG="${IVPANEL_RELEASE_TAG:-v1.0.6}"
 REPO_ZIP_URL="${IVPN_REPO_ZIP_URL:-https://github.com/${REPO}/releases/download/${RELEASE_TAG}/nodepanel-panel-${RELEASE_TAG#v}.zip}"
 PRODUCT_NAME="${IVPN_PRODUCT_NAME:-NodePanel}"
 CLI_NAME="${IVPN_CLI_NAME:-nodepanel}"

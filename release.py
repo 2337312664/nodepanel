@@ -125,6 +125,67 @@ def _collect_sources(dst):
     return dst
 
 
+
+def _check_installer(installer_path, tag, source_sha):
+    """校验安装器里的关键变量，避免发出一个「装不上」的版本。
+
+    检查的不是语法，而是**变量之间的依赖关系** —— shell 在定义变量时就地展开，
+    被引用的变量若还没定义，会静默展开成空串。这类错误语法检查看不出来，
+    但会让下载 URL 变成 .../download///.zip 而在安装时失败。
+
+    历史上出过一次：REPO_ZIP_URL 定义在 RELEASE_TAG 之前。
+    """
+    text = installer_path.read_text(encoding='utf-8')
+    lines = text.splitlines()
+
+    def find_value(prefix):
+        """返回变量在文件中的行号与取值表达式。"""
+        for i, line in enumerate(lines, 1):
+            if line.startswith(prefix):
+                return i, line
+        return None, None
+
+    problems = []
+
+    # 1) RELEASE_TAG 必须在 REPO_ZIP_URL 之前定义
+    tag_line, tag_val = find_value('RELEASE_TAG=')
+    url_line, url_val = find_value('REPO_ZIP_URL=')
+    if tag_line is None:
+        problems.append('找不到 RELEASE_TAG 定义')
+    if url_line is None:
+        problems.append('找不到 REPO_ZIP_URL 定义')
+    if tag_line and url_line and tag_line > url_line:
+        problems.append(
+            f'RELEASE_TAG 定义在第 {tag_line} 行，但 REPO_ZIP_URL 在第 {url_line} 行引用了它 —— '
+            '展开时标签为空，下载地址会损坏（应为 REPO_ZIP_URL 在后）')
+
+    # 2) RELEASE_TAG 默认值必须与本次构建的 tag 一致
+    if tag_val and f':-{tag}}}' not in tag_val:
+        problems.append(f'RELEASE_TAG 默认值不是 {tag}：{tag_val.strip()}')
+
+    # 3) 内置源码摘要必须与本次构建出的包一致，否则安装时校验失败
+    sha_line, sha_val = find_value('ASSET_SOURCE_SHA256=')
+    if sha_line is None:
+        problems.append('找不到 ASSET_SOURCE_SHA256 定义')
+    elif source_sha not in sha_val:
+        got = sha_val.strip().rstrip('}"').split(':-')[-1][:16]
+        problems.append(
+            f'ASSET_SOURCE_SHA256 与本次构建的包不一致（内置 {got}... 应为 {source_sha[:16]}...）—— '
+            '安装时摘要校验会失败')
+
+    # 4) 源码下载地址模板要能拼出实际资产名
+    if url_val and f'nodepanel-panel-${{RELEASE_TAG#v}}.zip' not in url_val:
+        problems.append('REPO_ZIP_URL 未使用 nodepanel-panel-${RELEASE_TAG#v}.zip 作为资产名')
+
+    if problems:
+        print('\n❌ 安装器自检未通过：')
+        for x in problems:
+            print(f'   · {x}')
+        sys.exit('\n修正 install-webui.sh 后重新运行。')
+
+    print(f'  ✅ 安装器自检通过（RELEASE_TAG={tag}，摘要已同步，变量顺序正确）')
+
+
 def build(args):
     """构建 release 资产、生成清单并签名。"""
     if not PRIVATE_KEY.exists():
@@ -200,6 +261,8 @@ def build(args):
     # 6) 自校验：用公钥验证签名，避免发出一个验不过的包
     run(['openssl', 'pkeyutl', '-verify', '-pubin', '-inkey', str(PUBLIC_KEY),
          '-rawin', '-in', str(manifest_path), '-sigfile', str(sig_path)])
+    # 7) 安装器自检：变量顺序与摘要同步 —— 这两项出错的版本装不上
+    _check_installer(out / 'install-webui.sh', tag, manifest['source_sha256'])
 
     print(f'\n✅ release 资产已生成并通过签名自校验：{out}')
     for f in sorted(out.iterdir()):
