@@ -14,6 +14,8 @@ umask 077
 # 不用动脚本其余部分——服务名、目录、账号都由这几个变量派生。
 REPO="${IVPN_REPO:-${IVPANEL_REPO:-2337312664/nodepanel}}"
 # 默认从本仓库的 Release 取源码包（已被签名清单记录摘要）。
+# RELEASE_TAG 必须在 REPO_ZIP_URL 之前定义 —— 后者引用它拼下载地址。
+RELEASE_TAG="${IVPANEL_RELEASE_TAG:-v1.0.5}"
 REPO_ZIP_URL="${IVPN_REPO_ZIP_URL:-https://github.com/${REPO}/releases/download/${RELEASE_TAG}/nodepanel-panel-${RELEASE_TAG#v}.zip}"
 PRODUCT_NAME="${IVPN_PRODUCT_NAME:-NodePanel}"
 CLI_NAME="${IVPN_CLI_NAME:-nodepanel}"
@@ -52,7 +54,6 @@ CF_TOKEN="${IVPN_CF_TOKEN:-${IVPANEL_CF_TOKEN:-}}"
 # 重新生成清单，再把这里的值替换成新的。
 #
 # 这些都可以用环境变量覆盖（例如在线安装器传入自己核验过的摘要）。
-RELEASE_TAG="${IVPANEL_RELEASE_TAG:-v1.0.4}"
 ASSET_SOURCE_SHA256="${IVPN_REPO_ZIP_SHA256:-d7adc51b56fa6952fc30491a1352eb0daf6558c1931271d2ffabb66a43135acf}"
 ASSET_SINGBOX_VERSION="${IVPANEL_SINGBOX_VERSION:-1.14.2}"
 ASSET_SINGBOX_SHA256_AMD64="${IVPN_SINGBOX_SHA256_AMD64:-7015a04bd65be428c710bfaa03eb5f97f7019ab24a8f8f43b4d0aa82713a2987}"
