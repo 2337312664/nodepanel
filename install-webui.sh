@@ -12,8 +12,9 @@ umask 077
 # ---------------------------------------------------------------------------
 # 全部可用环境变量覆盖，默认值即本产品（NodePanel）。改这里就能整体换品牌，
 # 不用动脚本其余部分——服务名、目录、账号都由这几个变量派生。
-REPO="${IVPN_REPO:-${IVPANEL_REPO:-}}"
-REPO_ZIP_URL="${IVPN_REPO_ZIP_URL:-https://github.com/${REPO}/archive/refs/heads/main.zip}"
+REPO="${IVPN_REPO:-${IVPANEL_REPO:-2337312664/nodepanel}}"
+# 默认从本仓库的 Release 取源码包（已被签名清单记录摘要）。
+REPO_ZIP_URL="${IVPN_REPO_ZIP_URL:-https://github.com/${REPO}/releases/download/${RELEASE_TAG}/nodepanel-panel-${RELEASE_TAG#v}.zip}"
 PRODUCT_NAME="${IVPN_PRODUCT_NAME:-NodePanel}"
 CLI_NAME="${IVPN_CLI_NAME:-nodepanel}"
 # 程序目录：APP_DIR 永远指向当前成功版本的符号链接。
@@ -41,6 +42,20 @@ HELPER_SOCKET="${HELPER_RUN_DIR}/helper.sock"
 CERT_DOMAIN="${IVPANEL_CERT_DOMAIN:-}"
 CF_TOKEN="${IVPN_CF_TOKEN:-}"
 # acme.sh 固定版本与摘要，避免安装时被上游替换。
+# ---------------------------------------------------------------------------
+# 本发布版的资产摘要
+# ---------------------------------------------------------------------------
+# 安装器直接下载源码与内核时必须校验摘要，否则拒绝安装。这些值对应
+# GitHub Release 里随本次发布上传的资产。要发布新版本时，用 release.py
+# 重新生成清单，再把这里的值替换成新的。
+#
+# 这些都可以用环境变量覆盖（例如在线安装器传入自己核验过的摘要）。
+RELEASE_TAG="${IVPANEL_RELEASE_TAG:-v1.0.0}"
+ASSET_SOURCE_SHA256="${IVPN_REPO_ZIP_SHA256:-196ad069353053b68870510b6a82667ed9645a6911c0025a10513b6fe6f7ceef}"
+ASSET_SINGBOX_VERSION="${IVPANEL_SINGBOX_VERSION:-1.14.2}"
+ASSET_SINGBOX_SHA256_AMD64="${IVPN_SINGBOX_SHA256_AMD64:-7015a04bd65be428c710bfaa03eb5f97f7019ab24a8f8f43b4d0aa82713a2987}"
+ASSET_SINGBOX_SHA256_ARM64="${IVPN_SINGBOX_SHA256_ARM64:-b43a1fb1bda131c6653576741ce527eb2bdeab7c9308ca90ee8b972abb7e4a7f}"
+
 ACME_VERSION="3.1.4"
 ACME_SHA256="e5f8e187bbf5251e0cd8891f2622daab9850366bd17bea9f92c2fe2ee091fd32"
 ACME_HOME="\${HOME}/.acme.sh"
@@ -253,7 +268,7 @@ install_singbox_core(){
   [[ -x "$SB_BIN" ]] && echo -e "${YELLOW}现有内核版本或构建标签不符合目标版本，正在准备升级...${NC}"
   echo -e "${YELLOW}正在安装 sing-box...${NC}"
   arch="$(detect_arch)"
-  sb_ver="$DEFAULT_SB_VER"
+  sb_ver="$ASSET_SINGBOX_VERSION"
   SB_STAGED="${TMP_DIR}/sing-box.new"
   if [[ -n "${IVPN_SINGBOX_BIN_PATH:-}" && -s "${IVPN_SINGBOX_BIN_PATH}" ]]; then
     expected="${IVPN_SINGBOX_SHA256:-}"
@@ -261,11 +276,11 @@ install_singbox_core(){
     install -m 755 "$IVPN_SINGBOX_BIN_PATH" "$SB_STAGED"
   else
     case "$arch" in
-      amd64) expected="${IVPN_SINGBOX_SHA256_AMD64:-}" ;;
-      arm64) expected="${IVPN_SINGBOX_SHA256_ARM64:-}" ;;
+      amd64) expected="${IVPN_SINGBOX_SHA256_AMD64:-$ASSET_SINGBOX_SHA256_AMD64}" ;;
+      arm64) expected="${IVPN_SINGBOX_SHA256_ARM64:-$ASSET_SINGBOX_SHA256_ARM64}" ;;
     esac
     [[ -n "$expected" ]] || die "当前发布没有内置 ${arch} 内核摘要，不能安全下载。"
-    url="https://github.com/${REPO}/releases/download/singbox-v${sb_ver}/sing-box-${sb_ver}-linux-${arch}.tar.gz"
+    url="https://github.com/${REPO}/releases/download/${RELEASE_TAG}/sing-box-${sb_ver}-linux-${arch}.tar.gz"
     archive="${TMP_DIR}/sing-box.tar.gz"
     if ! curl -4fL --connect-timeout 15 --retry 3 -o "$archive" "$url"; then
       die "下载 sing-box 失败。请确认这台服务器能访问 GitHub。"
@@ -323,11 +338,11 @@ download_project(){
   # Prefer a verified source archive supplied by the online installer when present.
   if [[ -n "${IVPN_REPO_ZIP_PATH:-}" && -s "${IVPN_REPO_ZIP_PATH}" ]]; then
     echo -e "${YELLOW}正在使用安装器上传的管理面板源码...${NC}"
-    expected="${IVPN_REPO_ZIP_SHA256:-}"
+    expected="${IVPN_REPO_ZIP_SHA256:-$ASSET_SOURCE_SHA256}"
     cp "$IVPN_REPO_ZIP_PATH" "$archive"
   else
     echo -e "${YELLOW}正在下载管理面板...${NC}"
-    expected="${IVPN_REPO_ZIP_SHA256:-}"
+    expected="${IVPN_REPO_ZIP_SHA256:-$ASSET_SOURCE_SHA256}"
     [[ -n "$expected" ]] || die "当前发布没有内置源码摘要，不能安全下载。"
     wget -q --tries=3 -O "$archive" "$REPO_ZIP_URL" || die "下载面板源码失败。"
   fi
