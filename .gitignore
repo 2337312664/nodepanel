@@ -1,9 +1,16 @@
 # 发布签名私钥 —— 丢失将无法发布更新，泄露将危及全部用户
 nodepanel-release-private.pem
 *.pem.key
-# 构建产物
+
+# 构建产物与发布资产
 build/
 release-dist/
+
+# 内核压缩包与解压产物（随 Release 分发，不进仓库）
+sing-box-*.tar.gz
+sb-arm64.tar.gz
+sing-box-*/
+
 # 本地环境
 .env
 *.log
