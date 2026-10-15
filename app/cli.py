@@ -341,18 +341,61 @@ def cmd_update(args):
                     break
     except OSError:
         pass
+    # 总内存决定走哪条路：
+    # · 总内存 >= 1GB：正常机器，可用内存不足多半是临时的，提示停面板再更新即可；
+    # · 总内存 < 512MB：即使停了面板也凑不够 400MB（实测 256MB 机器停面板后
+    #   只有 ~197MB），「先停面板再更新」这条路根本走不通，别误导用户 ——
+    #   直接指到「重跑安装器」这条真正可行的路。
+    total_mb = 0
+    try:
+        with open('/proc/meminfo') as fh:
+            for line in fh:
+                if line.startswith('MemTotal:'):
+                    total_mb = int(line.split()[1]) // 1024
+                    break
+    except OSError:
+        pass
+
+    tiny_box = 0 < total_mb < 512
+    # 安装器地址：仓库可被 brand 覆盖，但 raw 地址的仓库段取自更新源更合理
+    update_repo = ''
+    try:
+        update_repo = _update_repo()
+    except Exception:
+        pass
+    if not update_repo:
+        update_repo = '2337312664/nodepanel'
+    UPDATE_INSTALLER_URL = (f'https://raw.githubusercontent.com/{update_repo}'
+                            '/main/install-webui.sh')
     if 0 < avail_mb < 400:
         stop_cmd = f'systemctl stop {brand.SERVICE_WEB}'
+        rerun_cmd = 'bash /opt/nodepanel/install-webui.sh  # 安装器会在 /opt/nodepanel 生成'
+        if tiny_box:
+            advice = (f'这台机器总内存只有 {total_mb}MB，停下来也凑不够，'
+                      f'面板上的「检查并更新」在这台机器上用不了。')
+            steps = [
+                '升级请重跑安装器（复用现有环境，内存需求低，用户数据不变）：',
+                '  1) SSH 登录服务器，下载安装器：',
+                '       curl -fsSL -o /tmp/install-webui.sh ' + UPDATE_INSTALLER_URL,
+                '  2) 执行：bash /tmp/install-webui.sh',
+                '     （NAT 机器带上当时的端口参数，见 INSTALL.md）',
+                '  3) 完成后面板自动重启，账号、用户、订阅链接都不变。',
+            ]
+        else:
+            advice = '面板运行中占了大头，先停面板腾出内存即可。'
+            steps = [
+                f'  a) 先停面板再更新（完成后自动拉起）：',
+                f'       {stop_cmd} && {brand.CLI_NAME} update',
+                f'  b) 或重跑安装器升级（复用现有 venv，内存需求低）：',
+                f'       cd /opt/nodepanel && bash install-webui.sh',
+            ]
         _set_update_status('failed',
-            f'可用内存约 {avail_mb}MB，更新需要 400MB 以上（面板运行中占了大头）。'
-            f'请先停面板再更新：{stop_cmd} && {brand.CLI_NAME} update；'
-            f'或者重跑安装器升级（复用现有环境，内存需求低）。')
-        print(f'可用内存约 {avail_mb}MB，不足以在面板运行时安全更新（需要 400MB+）。', file=sys.stderr)
-        print('  两个选择：', file=sys.stderr)
-        print(f'    a) 先停面板再更新：  {stop_cmd} && {brand.CLI_NAME} update', file=sys.stderr)
-        print(f'       完成后它会自动把面板拉起来。', file=sys.stderr)
-        print('    b) 重跑安装器升级（复用现有 venv，内存需求低）：', file=sys.stderr)
-        print('       cd /opt/nodepanel && bash install-webui.sh', file=sys.stderr)
+            f'可用内存约 {avail_mb}MB，更新需要 400MB 以上。{advice} '
+            f'也可 SSH 运行 {brand.CLI_NAME} update 查看详细步骤。')
+        print(f'可用内存约 {avail_mb}MB，不足以安全更新（需要 400MB+）。{advice}', file=sys.stderr)
+        print('  升级方式：', file=sys.stderr)
+        for x in steps:
+            print(x, file=sys.stderr)
         return 1
 
     try:
