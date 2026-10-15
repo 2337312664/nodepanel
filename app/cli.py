@@ -329,6 +329,32 @@ def cmd_update(args):
         _set_update_status('failed', f'没有设置更新来源，请 SSH 运行 {brand.CLI_NAME} update 查看。')
         return 2
 
+    # 小内存机器（256MB）上面板进程本身就占着内存，更新时还要新建 venv
+    # （峰值 160MB+），两者叠加会触发 OOM —— 实测表现为进程被杀、安装器回滚，
+    # 而面板上只会看到一句笼统的「更新没有成功」。装之前先说清楚原因和出路。
+    avail_mb = 0
+    try:
+        with open('/proc/meminfo') as fh:
+            for line in fh:
+                if line.startswith('MemAvailable:'):
+                    avail_mb = int(line.split()[1]) // 1024
+                    break
+    except OSError:
+        pass
+    if 0 < avail_mb < 400:
+        stop_cmd = f'systemctl stop {brand.SERVICE_WEB}'
+        _set_update_status('failed',
+            f'可用内存约 {avail_mb}MB，更新需要 400MB 以上（面板运行中占了大头）。'
+            f'请先停面板再更新：{stop_cmd} && {brand.CLI_NAME} update；'
+            f'或者重跑安装器升级（复用现有环境，内存需求低）。')
+        print(f'可用内存约 {avail_mb}MB，不足以在面板运行时安全更新（需要 400MB+）。', file=sys.stderr)
+        print('  两个选择：', file=sys.stderr)
+        print(f'    a) 先停面板再更新：  {stop_cmd} && {brand.CLI_NAME} update', file=sys.stderr)
+        print(f'       完成后它会自动把面板拉起来。', file=sys.stderr)
+        print('    b) 重跑安装器升级（复用现有 venv，内存需求低）：', file=sys.stderr)
+        print('       cd /opt/nodepanel && bash install-webui.sh', file=sys.stderr)
+        return 1
+
     try:
         with tempfile.TemporaryDirectory(prefix='nodepanel-update-') as tmp_name:
             tmp = Path(tmp_name)
