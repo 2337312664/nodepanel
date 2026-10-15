@@ -39,8 +39,10 @@ HELPER_RUN_DIR="${IVPANEL_RUN_DIR:-/run/nodepanel}"
 PRODUCT_SLUG="${IVPANEL_SLUG:-nodepanel}"
 HELPER_SOCKET="${HELPER_RUN_DIR}/helper.sock"
 # 可选：让 NAT 环境也能拿到可信证书（DNS-01，不需入站端口）。
-CERT_DOMAIN="${IVPANEL_CERT_DOMAIN:-}"
-CF_TOKEN="${IVPN_CF_TOKEN:-}"
+# 这两个变量历史上用过 IVPN_/IVPANEL_ 两种前缀，两者都接受，避免文档与
+# 用户记忆不一致导致配置静默失效。
+CERT_DOMAIN="${IVPANEL_CERT_DOMAIN:-${IVPN_CERT_DOMAIN:-}}"
+CF_TOKEN="${IVPN_CF_TOKEN:-${IVPANEL_CF_TOKEN:-}}"
 # acme.sh 固定版本与摘要，避免安装时被上游替换。
 # ---------------------------------------------------------------------------
 # 本发布版的资产摘要
@@ -50,7 +52,7 @@ CF_TOKEN="${IVPN_CF_TOKEN:-}"
 # 重新生成清单，再把这里的值替换成新的。
 #
 # 这些都可以用环境变量覆盖（例如在线安装器传入自己核验过的摘要）。
-RELEASE_TAG="${IVPANEL_RELEASE_TAG:-v1.0.3}"
+RELEASE_TAG="${IVPANEL_RELEASE_TAG:-v1.0.4}"
 ASSET_SOURCE_SHA256="${IVPN_REPO_ZIP_SHA256:-d7adc51b56fa6952fc30491a1352eb0daf6558c1931271d2ffabb66a43135acf}"
 ASSET_SINGBOX_VERSION="${IVPANEL_SINGBOX_VERSION:-1.14.2}"
 ASSET_SINGBOX_SHA256_AMD64="${IVPN_SINGBOX_SHA256_AMD64:-7015a04bd65be428c710bfaa03eb5f97f7019ab24a8f8f43b4d0aa82713a2987}"
@@ -92,13 +94,13 @@ ASSET_PATH=""
 LE_ACTIVE=""          # setup_letsencrypt 成功签发后置 1，控制结尾是否还提示证书警告
 # NAT / 端口受限服务器：无法完成 ACME HTTP-01（80 端口属于宿主机），
 # 置 1 时跳过 Let's Encrypt，面板改用自签证书（浏览器会有证书警告，属预期）。
-IVPN_NAT_MODE="${IVPN_NAT_MODE:-0}"
+IVPN_NAT_MODE="${IVPN_NAT_MODE:-${IVPANEL_NAT_MODE:-0}}"
 # 内核监听端口与对外映射端口（NAT 下两者不同）。留空即用协议默认端口。
 # 面板端口：端口受限（NAT）机器必须与商家映射的公网端口一致，
 # 否则面板装完外部访问不了。留空则随机取 20000-60000 之间的空闲端口。
-IVPN_PANEL_PORT="${IVPN_PANEL_PORT:-}"
-IVPN_LISTEN_PORT="${IVPN_LISTEN_PORT:-}"
-IVPN_PUBLIC_PORT="${IVPN_PUBLIC_PORT:-}"
+IVPN_PANEL_PORT="${IVPN_PANEL_PORT:-${IVPANEL_PANEL_PORT:-}}"
+IVPN_LISTEN_PORT="${IVPN_LISTEN_PORT:-${IVPANEL_LISTEN_PORT:-}}"
+IVPN_PUBLIC_PORT="${IVPN_PUBLIC_PORT:-${IVPANEL_PUBLIC_PORT:-}}"
 ADMIN_PASS=""
 ADMIN_USER="admin"
 FRESH_INSTALL="1"
