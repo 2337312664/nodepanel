@@ -180,6 +180,18 @@ def main():
     shoot(chrome, html, OUT / 'settings.png', '1100x1400')
     print('  ✅ settings.png')
 
+    # --- 中转/落地页 ---
+    ctx_e = base_ctx('egress', {
+        'settings': settings,
+        'relay_types': so.RELAY_TYPES,
+        'relay_active': False,
+        'uplink_types': so.UPLINK_TYPES,
+        'uplink_active': False,
+    })
+    html = render_html('egress', 'egress.html', lambda: ctx_e, css, js)
+    shoot(chrome, html, OUT / 'egress.png', '1100x1300')
+    print('  ✅ egress.png')
+
     # --- 用户页 ---
     from app import web as webmod
     ctx2 = base_ctx('users', {

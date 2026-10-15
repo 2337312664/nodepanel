@@ -15,6 +15,7 @@
     <nav class="main-nav" aria-label="管理菜单">
       <a href="/" class="{{ 'active' if active == 'home' else '' }}">概览</a>
       <a href="/users" class="{{ 'active' if active == 'users' else '' }}">用户</a>
+      <a href="/egress" class="{{ 'active' if active == 'egress' else '' }}">中转/落地</a>
       <a href="/settings" class="{{ 'active' if active == 'settings' else '' }}">设置</a>
     </nav>
     <form class="logout-form" method="post" action="/logout">
@@ -30,6 +31,7 @@
   <nav class="mobile-nav" aria-label="手机管理菜单">
     <a href="/" class="{{ 'active' if active == 'home' else '' }}">概览</a>
     <a href="/users" class="{{ 'active' if active == 'users' else '' }}">用户</a>
+    <a href="/egress" class="{{ 'active' if active == 'egress' else '' }}">中转/落地</a>
     <a href="/settings" class="{{ 'active' if active == 'settings' else '' }}">设置</a>
   </nav>
   <script src="{{ static_path }}/app.js?v=20261009a"></script>

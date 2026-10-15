@@ -27,6 +27,28 @@ def _update_status():
     return status if isinstance(status, dict) else {}
 
 
+@router.get('/egress')
+def egress_page(request: Request, user: str = Depends(require_user)):
+    """中转/落地页：住宅代理落地 + 中转落地 + 落地机导出参数。
+
+    从设置页拆出来，让「日常改动」与「出口走向」互不干扰。
+    保存逻辑复用 /settings/update（表单 action 指过去），校验与
+    失败回滚保持同一条路径，不另起炉灶。
+    """
+    settings = db.all_settings()
+    return templates.TemplateResponse('egress.html', {
+        'request': request,
+        'active': 'egress',
+        'csrf_token': csrf_token(request),
+        'settings': settings,
+        'relay_types': system_ops.RELAY_TYPES,
+        'relay_active': system_ops.relay_available(settings),
+        'uplink_types': system_ops.UPLINK_TYPES,
+        'uplink_active': system_ops.uplink_available(settings),
+        **notices(request),
+    })
+
+
 @router.get('/settings')
 def settings_page(request: Request, user: str = Depends(require_user)):
     settings = db.all_settings()
@@ -44,10 +66,7 @@ def settings_page(request: Request, user: str = Depends(require_user)):
         'acme_port': system_ops.ACME_PORT,
         'firewall_rules': singbox.firewall_rules(settings),
         'update_status': _update_status(),
-        'relay_types': system_ops.RELAY_TYPES,
-        'relay_active': system_ops.relay_available(settings),
-        'uplink_types': system_ops.UPLINK_TYPES,
-        'uplink_active': system_ops.uplink_available(settings),
+
         **notices(request),
     })
 
@@ -164,13 +183,13 @@ def change_server(request: Request, user: str = Depends(require_user), _: None =
     }
     if relay_values['relay_type']:
         if relay_values['relay_type'] not in system_ops.RELAY_TYPES:
-            return redirect_with_message('/settings', error='中转类型只支持 SOCKS5 或 HTTP。')
+            return redirect_with_message('/egress', error='中转类型只支持 SOCKS5 或 HTTP。')
         if not relay_values['relay_server']:
-            return redirect_with_message('/settings', error='开启中转后必须填写中转服务器地址。')
+            return redirect_with_message('/egress', error='开启中转后必须填写中转服务器地址。')
         try:
             system_ops.relay_settings(relay_values)
         except ValueError as exc:
-            return redirect_with_message('/settings', error=f'中转设置有问题：{exc}')
+            return redirect_with_message('/egress', error=f'中转设置有问题：{exc}')
     else:
         # 关闭中转时清空全部关联字段，避免残留的代理凭据留在数据库里。
         relay_values.update({'relay_server': '', 'relay_port': '',
@@ -192,11 +211,11 @@ def change_server(request: Request, user: str = Depends(require_user), _: None =
     if uplink_values['uplink_type']:
         if not uplink_values['uplink_server'] or not uplink_values['uplink_port']:
             return redirect_with_message(
-                '/settings', error='开启中转落地后必须填写落地机地址和端口。')
+                '/egress', error='开启中转落地后必须填写落地机地址和端口。')
         try:
             system_ops.uplink_settings(uplink_values)
         except ValueError as exc:
-            return redirect_with_message('/settings', error=f'中转落地设置有问题：{exc}')
+            return redirect_with_message('/egress', error=f'中转落地设置有问题：{exc}')
     else:
         # 关闭时清空凭据，但保留「允许内网地址」开关，免得每次重开都要再勾一次。
         uplink_values.update({k: '' for k in (

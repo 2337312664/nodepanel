@@ -126,8 +126,10 @@ def _collect_sources(dst):
 
 
 
-def _check_installer(installer_path, tag, source_sha):
-    """校验安装器里的关键变量，避免发出一个「装不上」的版本。
+def _check_installer(installer_path, tag, source_sha, sha_of_installer=None):
+    """校验安装器，避免发出一个「装不上」的版本。
+
+    sha_of_installer 是清单里声明的安装器摘要；传入后会与磁盘文件核对。
 
     检查的不是语法，而是**变量之间的依赖关系** —— shell 在定义变量时就地展开，
     被引用的变量若还没定义，会静默展开成空串。这类错误语法检查看不出来，
@@ -177,11 +179,19 @@ def _check_installer(installer_path, tag, source_sha):
     if url_val and f'nodepanel-panel-${{RELEASE_TAG#v}}.zip' not in url_val:
         problems.append('REPO_ZIP_URL 未使用 nodepanel-panel-${RELEASE_TAG#v}.zip 作为资产名')
 
+    # 5) installer_sha256 必须与磁盘上的文件一致。
+    #    手工构建时容易犯：先算摘要写进清单，之后又改了安装器却没重算 ——
+    #    这样发布的清单会与实际文件不符，更新时必然报「资产摘要校验失败」。
+    if sha_of_installer != sha256_file(installer_path):
+        problems.append(
+            'installer_sha256 与 install-webui.sh 实际内容不一致 —— '
+            '清单可能在安装器定稿前就生成了。请重新运行构建，让摘要最后计算。')
+
     if problems:
         print('\n❌ 安装器自检未通过：')
         for x in problems:
             print(f'   · {x}')
-        sys.exit('\n修正 install-webui.sh 后重新运行。')
+        sys.exit('\n修正后再重新运行。')
 
     print(f'  ✅ 安装器自检通过（RELEASE_TAG={tag}，摘要已同步，变量顺序正确）')
 
@@ -262,7 +272,8 @@ def build(args):
     run(['openssl', 'pkeyutl', '-verify', '-pubin', '-inkey', str(PUBLIC_KEY),
          '-rawin', '-in', str(manifest_path), '-sigfile', str(sig_path)])
     # 7) 安装器自检：变量顺序与摘要同步 —— 这两项出错的版本装不上
-    _check_installer(out / 'install-webui.sh', tag, manifest['source_sha256'])
+    _check_installer(out / 'install-webui.sh', tag, manifest['source_sha256'],
+                     manifest['installer_sha256'])
 
     print(f'\n✅ release 资产已生成并通过签名自校验：{out}')
     for f in sorted(out.iterdir()):
