@@ -224,6 +224,10 @@ def subscription_qr(request: Request, token: str, p: str = ''):
         raise NotFound()
     if p == 'singbox':
         payload = sub_url(request, client).rstrip('/') + '/singbox.json'
+    elif p == 'clash':
+        # Clash Verge 等客户端可以直接扫订阅地址的二维码导入；
+        # 带上 target=clash 让服务端明确返回 Clash 配置，不依赖 UA 识别。
+        payload = sub_url(request, client).rstrip('/') + '?target=clash'
     elif p in ('vless-reality', 'hysteria2') and p in singbox.enabled_keys():
         pin = '' if preview_mode() else singbox.cert_pin()
         if p == 'hysteria2' and not pin and not preview_mode():

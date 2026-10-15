@@ -2575,3 +2575,44 @@ details.sub-alt > summary:hover {
   color: var(--np-text);
   font-size: 13.5px;
 }
+
+/* Clash 订阅区块：二维码与说明并排，窄屏自动堆叠。 */
+.clash-block {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 18px;
+  align-items: start;
+  margin-top: 12px;
+}
+
+.clash-block .sub-qr {
+  width: 132px;
+  height: 132px;
+  padding: 8px;
+  border: 1px solid var(--np-border);
+  border-radius: var(--np-radius-sm);
+  background: #fff;
+}
+
+.clash-copy > .kv-muted {
+  margin: 0 0 10px;
+}
+
+.clash-copy .share-line {
+  margin-bottom: 10px;
+}
+
+.clash-copy > .kv-muted:last-child {
+  margin-bottom: 0;
+}
+
+@media (max-width: 560px) {
+  .clash-block {
+    grid-template-columns: 1fr;
+    justify-items: center;
+  }
+
+  .clash-copy {
+    width: 100%;
+  }
+}

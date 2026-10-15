@@ -87,17 +87,26 @@
           </p>
           <details class="sub-alt">
             <summary>用 Clash / Clash Verge 的看这里</summary>
-            <div class="share-line">
-              <input id="clash-sub-{{ client.id }}" value="{{ client.sub_url }}?target=clash" readonly
-                     aria-label="{{ client.name }} 的 Clash 订阅链接">
-              <button class="icon-button" type="button" data-copy-target="clash-sub-{{ client.id }}"
-                      title="复制链接" aria-label="复制链接">复制</button>
+            <div class="clash-block">
+              <img class="sub-qr" src="/sub/{{ client.sub_token }}/qr.png?p=clash"
+                   alt="{{ client.name }} 的 Clash 订阅二维码" loading="lazy">
+              <div class="clash-copy">
+                <p class="kv-muted">
+                  在 Clash Verge 里选「订阅 → 新建」，把下面地址粘进去；
+                  或者直接用 Clash Verge 的<strong>扫码</strong>功能扫左边这张码。
+                </p>
+                <div class="share-line">
+                  <input id="clash-sub-{{ client.id }}" value="{{ client.sub_url }}?target=clash" readonly
+                         aria-label="{{ client.name }} 的 Clash 订阅链接">
+                  <button class="icon-button" type="button" data-copy-target="clash-sub-{{ client.id }}"
+                          title="复制链接" aria-label="复制链接">复制</button>
+                </div>
+                <p class="kv-muted">
+                  这条是<strong>强制 Clash 格式</strong>的地址：不管客户端是什么，都会返回 Clash 配置。
+                  普通那条则按客户端自动判断 —— 如果 Clash Verge 没认出格式，就用这条。
+                </p>
+              </div>
             </div>
-            <p class="kv-muted">
-              上面这条是<strong>强制 Clash 格式</strong>的地址：不管客户端是什么，
-              都会返回 Clash 配置。普通那条则按客户端自动判断。
-              如果 Clash Verge 拉普通链接时没认出格式，就用这条。
-            </p>
           </details>
         </div>
       </section>
