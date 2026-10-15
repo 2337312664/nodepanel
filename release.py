@@ -196,6 +196,35 @@ def _check_installer(installer_path, tag, source_sha, sha_of_installer=None):
     print(f'  ✅ 安装器自检通过（RELEASE_TAG={tag}，摘要已同步，变量顺序正确）')
 
 
+
+def _check_templates():
+    """模板结构自检：form 闭合与提交按钮。
+
+    背景：把「中转/落地」从设置页拆出去时，误删了旁边 server 表单的
+    提交按钮和 </form>，导致设置页整个无法保存 —— 而当时只测了新页面。
+    这类错误渲染不报错、浏览器还会静默容错，只有逐个 form 检查才能抓到。
+    """
+    problems = []
+    tpl_dir = ROOT / 'app' / 'templates'
+    for path in sorted(tpl_dir.glob('*.html')):
+        text = path.read_text(encoding='utf-8')
+        opens = text.count('<form')
+        closes = text.count('</form>')
+        if opens != closes:
+            problems.append(f'{path.name}: <form> 出现 {opens} 次但 </form> 只有 {closes} 次')
+        # 每个含输入控件的 form 附近应有提交按钮（Jinja 条件里可能包着按钮，
+        # 简化处理：只要文件里 form 带输入控件，全文件至少要有一个 submit）
+        if opens and ('<input' in text or '<select' in text):
+            if 'type="submit"' not in text:
+                problems.append(f'{path.name}: 有表单输入控件但没有任何提交按钮')
+    if problems:
+        print('\n❌ 模板自检未通过：')
+        for x in problems:
+            print(f'   · {x}')
+        sys.exit('\n修正模板后重新运行。')
+    print('  ✅ 模板自检通过（form 闭合配对，提交按钮齐全）')
+
+
 def build(args):
     """构建 release 资产、生成清单并签名。"""
     if not PRIVATE_KEY.exists():
@@ -274,6 +303,7 @@ def build(args):
     # 7) 安装器自检：变量顺序与摘要同步 —— 这两项出错的版本装不上
     _check_installer(out / 'install-webui.sh', tag, manifest['source_sha256'],
                      manifest['installer_sha256'])
+    _check_templates()
 
     print(f'\n✅ release 资产已生成并通过签名自校验：{out}')
     for f in sorted(out.iterdir()):
