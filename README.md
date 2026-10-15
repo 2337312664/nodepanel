@@ -3,6 +3,9 @@
 自建 sing-box 的节点管理面板。给一台自己的 VPS 装上，用网页管理连接、用户和订阅，
 不需要敲命令。
 
+> **第一次安装？** 看 [安装指南](INSTALL.md) —— 手把手步骤，不需要 Linux 经验。
+> 下面是给开发者和运维看的速查。
+
 ## 特点
 
 - **一条安装命令**，装完给一个网址就能用；证书、防火墙、协议参数全自动配置
@@ -26,16 +29,21 @@
 
 ## 安装
 
+**没有 Linux 经验？** 看 [安装指南](INSTALL.md)（手把手，含截图级说明）。
+
+### 普通服务器（有公网 IP）
+
 ```bash
 bash <(curl -fsSL https://raw.githubusercontent.com/2337312664/nodepanel/main/install-webui.sh)
 ```
 
-装完会打印面板地址、账号和密码 —— **密码只显示这一次**。
+自动申请 Let's Encrypt 证书、配置防火墙、启动服务。结束时打印访问地址与密码
+—— **密码只显示这一次**。
 
-### NAT / 端口受限服务器
+### 端口受限（NAT）服务器
 
-商家只映射了固定端口时（例如后台写着 `20001→20001` 和 `20002→20002`），
-**三个端口都要显式指定**，否则面板会随机取端口、外部访问不了：
+商家共享 IP、只映射若干高位端口时，必须先看**商家后台的端口映射**，
+把三个端口都填上，否则面板取随机端口、外部访问不了：
 
 ```bash
 IVPN_NAT_MODE=1 \
@@ -45,52 +53,51 @@ IVPN_PUBLIC_PORT=20002 \
   bash <(curl -fsSL https://raw.githubusercontent.com/2337312664/nodepanel/main/install-webui.sh)
 ```
 
-| 变量 | 含义 | 必填 |
+| 变量 | 含义 | 说明 |
 | --- | --- | --- |
-| `IVPN_PANEL_PORT` | **面板**监听与访问的端口 | 端口受限时必填 |
-| `IVPN_LISTEN_PORT` | 内核实际监听的**内网**端口 | 端口受限时必填 |
-| `IVPN_PUBLIC_PORT` | 客户端连接的**公网**端口 | 与上面不同时必填 |
+| `IVPN_NAT_MODE` | 开启受限环境适配 | 跳过 ACME（宿主机占着 80 端口，HTTP-01 无法通过），改用自签证书 |
+| `IVPN_PANEL_PORT` | 面板端口 | 必须与商家映射的公网端口一致 |
+| `IVPN_LISTEN_PORT` | 内核监听的内网端口 | 即商家写的「容器端口」 |
+| `IVPN_PUBLIC_PORT` | 客户端连接的公网端口 | 分享链接里使用这个 |
 
 `IVPN_LISTEN_PORT` 与 `IVPN_PUBLIC_PORT` 不同时（例如商家写 `20002→10000`），
-监听端口填 10000、公网端口填 20002，分享链接里写的是后者。
+监听填 `10000`、公网填 `20002`。面板会在分享链接里写后者。
 
-### 有域名：签可信证书（DNS-01）
+### 有域名：申请可信证书
+
+有域名（Cloudflare 托管）可以走 DNS-01，不需要任何入站端口就能拿到
+Let's Encrypt 证书，浏览器不再报警告：
 
 ```bash
-IVPN_NAT_MODE=1 IVPANEL_CERT_DOMAIN="panel.example.com" IVPN_CF_TOKEN="<Cloudflare Token>" \
+IVPN_NAT_MODE=1 \
+IVPANEL_CERT_DOMAIN="panel.example.com" \
+IVPN_CF_TOKEN="<Cloudflare API Token>" \
+IVPN_PANEL_PORT=20001 \
+IVPN_LISTEN_PORT=20002 \
+IVPN_PUBLIC_PORT=20002 \
   bash <(curl -fsSL https://raw.githubusercontent.com/2337312664/nodepanel/main/install-webui.sh)
 ```
 
-## 端口受限（NAT）环境的部署
+Token 需要 `Zone → DNS → Edit` 权限。安装器会一并配置好每天两次的自动续期。
 
-商家只映射高位端口时，加三个环境变量即可：
+> 访问时端口号仍需带上（`https://panel.example.com:20001`）。
+> 想去掉端口，需要把宿主机 443 映射到容器，这取决于服务商。
 
-```bash
-IVPN_NAT_MODE=1 \
-IVPN_LISTEN_PORT=20002 \
-IVPN_PUBLIC_PORT=20002 \
-bash install-webui.sh
-```
+### 安装参数汇总
 
-- `IVPN_NAT_MODE=1` —— 跳过 Let's Encrypt（HTTP-01 需要公网可达的 80 端口，
-  受限环境做不到），改用自签证书，浏览器首次访问需手动信任
-- `IVPN_LISTEN_PORT` —— 内核实际监听的**内网**端口
-- `IVPN_PUBLIC_PORT` —— 客户端连接的**公网**端口
+所有参数都可通过环境变量覆盖，便于私有部署或并行测试：
 
-两者不同时，分享链接里写的是后者。
-
-### 有域名时：签可信证书
-
-有域名就可以用 DNS-01 绕过端口限制，拿到 Let's Encrypt 证书（浏览器不再有警告）：
-
-```bash
-IVPN_CF_TOKEN="<Cloudflare API Token>" \
-IVPANEL_CERT_DOMAIN="panel.example.com" \
-IVPN_NAT_MODE=1 \
-bash install-webui.sh
-```
-
-Token 需要 `Zone → DNS → Edit` 权限。安装器会配置自动续期。
+| 变量 | 默认值 | 用途 |
+| --- | --- | --- |
+| `IVPN_PRODUCT_NAME` | `NodePanel` | 界面显示名 |
+| `IVPN_CLI_NAME` | `nodepanel` | CLI 命令名 |
+| `IVPANEL_DATA_DIR` | `/etc/nodepanel` | 数据目录 |
+| `IVPANEL_APP_DIR` | `/opt/nodepanel` | 程序目录 |
+| `IVPANEL_CERT_STORE` | `/etc/nodepanel-cert` | 证书库 |
+| `IVPANEL_WEB_USER` | `nodepanel-web` | 面板服务用户 |
+| `IVPANEL_SB_USER` | `nodepanel-sb` | 内核服务用户 |
+| `IVPANEL_REPO` | `2337312664/nodepanel` | 下载源码与内核的仓库 |
+| `IVPANEL_UPDATE_REPO` | 同上 | 面板内更新检查的仓库 |
 
 ## 常用命令
 
