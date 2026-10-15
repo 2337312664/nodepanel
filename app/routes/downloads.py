@@ -34,7 +34,7 @@ def latest_release(repo, interval):
     request = urllib.request.Request(
         f'https://api.github.com/repos/{repo}/releases/latest',
         headers={'Accept': 'application/vnd.github+json',
-                 'User-Agent': 'renrenvpn-panel'},
+                 'User-Agent': 'nodepanel-panel'},
     )
     try:
         with urllib.request.urlopen(request, timeout=5) as response:

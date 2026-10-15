@@ -136,7 +136,7 @@ def _share_with_core(path):
     sing-box runs as its own user (not root, so a compromised panel cannot use
     config.json to make it write files as root). The installer makes singbox/
     setgid with that user's group, so 0640 is enough; files written by root
-    (renrenvpn) are handed back to the directory owner so the panel can still read them.
+    (via the CLI) are handed back to the directory owner so the panel can still read them.
     """
     os.chmod(path, 0o640)
     if os.geteuid() == 0:

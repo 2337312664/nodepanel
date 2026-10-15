@@ -24,11 +24,15 @@ if not SECRET_FILE.exists():
     SECRET_FILE.write_text(os.urandom(32).hex())
     SECRET_FILE.chmod(0o600)
 SESSION_SECRET = SECRET_FILE.read_text().strip()
-serializer = URLSafeSerializer(SESSION_SECRET, salt='renrenvpn-web')
-guide_serializer = URLSafeSerializer(SESSION_SECRET, salt='renrenvpn-guide')
+serializer = URLSafeSerializer(SESSION_SECRET, salt=f'{brand.CLI_NAME}-web')
+guide_serializer = URLSafeSerializer(SESSION_SECRET, salt=f'{brand.CLI_NAME}-guide')
 # Sign notices so a crafted ?msg= link cannot show attacker text in the panel's own banner.
-notice_serializer = URLSafeTimedSerializer(SESSION_SECRET, salt='renrenvpn-notice')
+notice_serializer = URLSafeTimedSerializer(SESSION_SECRET, salt=f'{brand.CLI_NAME}-notice')
 NOTICE_MAX_AGE = 600
+
+# 会话 Cookie 名随产品走。改名会让已登录的会话失效一次，之后恢复正常。
+SESSION_COOKIE = f'{brand.CLI_NAME}_session'
+GUIDE_COOKIE = f'{brand.CLI_NAME}_guide'
 
 templates = Jinja2Templates(directory=str(BASE_DIR / 'templates'))
 
@@ -41,7 +45,7 @@ def session_max_age():
 
 
 def current_session(request):
-    cookie = request.cookies.get('renrenvpn_session')
+    cookie = request.cookies.get(SESSION_COOKIE)
     if not cookie:
         return None
     try:

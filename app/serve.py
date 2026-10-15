@@ -107,7 +107,7 @@ def _issue_self_signed_panel_cert():
     code, out, err = run_cmd([
         'openssl', 'req', '-x509', '-newkey', 'rsa:2048', '-nodes',
         '-days', '3650', '-keyout', str(key_path), '-out', str(cert_path),
-        '-subj', f'/CN={host or "renrenvpn"}', '-addext', f'subjectAltName={san}',
+        '-subj', f'/CN={host or brand.CLI_NAME}', '-addext', f'subjectAltName={san}',
     ], 90)
     if code != 0 or not cert_path.is_file():
         raise RuntimeError(f'生成自签面板证书失败：{err or out or "openssl 执行失败"}')

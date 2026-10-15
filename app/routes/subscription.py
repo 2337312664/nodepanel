@@ -13,7 +13,7 @@ from fastapi.responses import JSONResponse, RedirectResponse, Response, Streamin
 from itsdangerous import BadSignature
 
 from .. import db, links, singbox, system_ops
-from ..web import (NotFound, current_user, guide_code, guide_serializer,
+from ..web import (GUIDE_COOKIE, NotFound, current_user, guide_code, guide_serializer,
                    guide_url, preview_mode, sub_url, templates)
 
 router = APIRouter()
@@ -107,7 +107,7 @@ def _guide_context(request, client):
 def _guide_unlocked(request, token):
     if current_user(request):
         return True
-    cookie = request.cookies.get('renrenvpn_guide')
+    cookie = request.cookies.get(GUIDE_COOKIE)
     if not cookie:
         return False
     try:
@@ -144,7 +144,7 @@ def guide_unlock(request: Request, token: str, code: str = Form(...)):
         }, status_code=401, headers=SUB_HEADERS)
     session = guide_serializer.dumps({'token': token, 'iat': int(time.time())})
     response = RedirectResponse(f'/guide/{token}', 303, headers=SUB_HEADERS)
-    response.set_cookie('renrenvpn_guide', session, max_age=GUIDE_SESSION_AGE,
+    response.set_cookie(GUIDE_COOKIE, session, max_age=GUIDE_SESSION_AGE,
                         path=f'/guide/{token}', httponly=True, samesite='strict',
                         secure=system_ops.is_secure(request))
     return response

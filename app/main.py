@@ -13,11 +13,11 @@ from fastapi.responses import PlainTextResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.concurrency import run_in_threadpool
 
-from . import db, links, singbox, system_ops
+from . import brand, db, links, singbox, system_ops
 from .db import log_action, verify_admin
 from .routes import settings as settings_routes
 from .routes import downloads as download_routes, subscription, users
-from .web import (BASE_DIR, NotFound, RedirectException, apply_config, csrf_token,
+from .web import (BASE_DIR, SESSION_COOKIE, NotFound, RedirectException, apply_config, csrf_token,
                   current_user, login_url, preview_mode, redirect_with_message, require_user,
                   serializer, session_max_age, sub_url, guide_url, templates, traffic_overview,
                   home_clients, notices, verify_csrf, human_bytes,
@@ -176,7 +176,7 @@ def repair(request: Request, user: str = Depends(require_user), _: None = Depend
         return redirect_with_message('/', msg='已经重新检查并启动，连接恢复正常。')
     except Exception as exc:
         log_action('repair', 'singbox', 'error', str(exc))
-        return redirect_with_message('/', error='修复没有成功。请稍后再试，或在服务器上运行 renrenvpn repair 查看原因。')
+        return redirect_with_message('/', error=f'修复没有成功。请稍后再试，或在服务器上运行 {brand.CLI_NAME} repair 查看原因。')
 
 
 # Register application routes before the login catch-all.
@@ -193,7 +193,7 @@ def logout(request: Request, user: str = Depends(require_user),
     # Single admin: revoking every session also kills a copied cookie.
     db.bump_session_epoch()
     resp = RedirectResponse(login_url(), 302)
-    resp.delete_cookie('renrenvpn_session')
+    resp.delete_cookie(SESSION_COOKIE)
     return resp
 
 
@@ -231,7 +231,7 @@ async def login(request: Request, path_name: str):
     if login_blocked(ip, username):
         return templates.TemplateResponse('login.html', {
             'request': request, 'login_path': login_url(),
-            'error': '失败次数太多，请 10 分钟后再试。忘记密码可以在服务器上运行 renrenvpn reset-password。'})
+            'error': f'失败次数太多，请 10 分钟后再试。忘记密码可以在服务器上运行 {brand.CLI_NAME} reset-password。'})
     if not LOGIN_VERIFY_SLOTS.acquire(blocking=False):
         return PlainTextResponse('登录请求较多，请稍后重试。', status_code=429)
     try:
@@ -249,7 +249,7 @@ async def login(request: Request, path_name: str):
         'ep': db.get_session_epoch(),
     })
     resp = RedirectResponse('/', 302)
-    resp.set_cookie('renrenvpn_session', session, httponly=True, samesite='lax',
+    resp.set_cookie(SESSION_COOKIE, session, httponly=True, samesite='lax',
                     max_age=session_max_age(), secure=system_ops.is_secure(request))
     return resp
 

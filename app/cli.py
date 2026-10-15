@@ -182,17 +182,17 @@ def cmd_set_port(args):
     system_ops.save_web_settings({'panel_port': port})
     try:
         code, out, err = system_ops.run_cmd(
-            ['systemctl', 'restart', 'iwantrun-vpn-web'], 30)
+            ['systemctl', 'restart', brand.SERVICE_WEB], 30)
         if code != 0:
             raise RuntimeError(err or out or '面板服务重启失败')
         code, out, err = system_ops.run_cmd(
-            ['systemctl', 'is-active', '--quiet', 'iwantrun-vpn-web'], 10)
+            ['systemctl', 'is-active', '--quiet', brand.SERVICE_WEB], 10)
         if code != 0:
             raise RuntimeError(err or out or '面板服务没有进入运行状态')
         system_ops.open_port(port, 'tcp')
     except Exception as exc:
         system_ops.save_web_settings({'panel_port': old_port})
-        system_ops.run_cmd(['systemctl', 'restart', 'iwantrun-vpn-web'], 30)
+        system_ops.run_cmd(['systemctl', 'restart', brand.SERVICE_WEB], 30)
         print(f'端口修改失败，已恢复 {old_port}：{exc}', file=sys.stderr)
         return 1
     try:
@@ -669,7 +669,7 @@ def cmd_backup(args):
     db.init_db()
     BACKUP_DIR.mkdir(parents=True, exist_ok=True)
     stamp = datetime.now().strftime('%Y%m%d-%H%M%S')
-    target = Path(args.path) if args.path else BACKUP_DIR / f'renrenvpn-{stamp}.tar.gz'
+    target = Path(args.path) if args.path else BACKUP_DIR / f'{brand.CLI_NAME}-{stamp}.tar.gz'
     with tempfile.TemporaryDirectory() as tmp:
         snapshot = Path(tmp) / 'panel.db'
         source = db.connect()
@@ -743,11 +743,11 @@ def cmd_restore(args):
         }
         # Stop panel writes first, so the rollback snapshot is the latest state.
         active = system_ops.run_cmd(
-            ['systemctl', 'is-active', 'iwantrun-vpn-web'], 5
+            ['systemctl', 'is-active', brand.SERVICE_WEB], 5
         )[0] == 0
         if active:
             code, out, err = system_ops.run_cmd(
-                ['systemctl', 'stop', 'iwantrun-vpn-web'], 30)
+                ['systemctl', 'stop', brand.SERVICE_WEB], 30)
             if code != 0:
                 print(f'无法暂停面板写入：{err or out}', file=sys.stderr)
                 return 1
@@ -772,7 +772,7 @@ def cmd_restore(args):
         except (OSError, sqlite3.Error) as exc:
             print(f'无法为当前数据做回滚快照，什么都没有改动：{exc}', file=sys.stderr)
             if active:
-                system_ops.run_cmd(['systemctl', 'start', 'iwantrun-vpn-web'], 30)
+                system_ops.run_cmd(['systemctl', 'start', brand.SERVICE_WEB], 30)
             return 1
 
         try:
@@ -797,20 +797,20 @@ def cmd_restore(args):
                 Path(str(db.DB_PATH) + suffix).unlink(missing_ok=True)
             print(f'恢复失败，已还原原数据：{exc}', file=sys.stderr)
             if active:
-                system_ops.run_cmd(['systemctl', 'start', 'iwantrun-vpn-web'], 30)
+                system_ops.run_cmd(['systemctl', 'start', brand.SERVICE_WEB], 30)
             return 1
 
         if active:
             code, out, err = system_ops.run_cmd(
-                ['systemctl', 'start', 'iwantrun-vpn-web'], 30)
+                ['systemctl', 'start', brand.SERVICE_WEB], 30)
             if code == 0:
                 # start returns at once for Type=simple; a bad restore crashes a moment later.
                 time.sleep(3)
                 code, out, err = system_ops.run_cmd(
-                    ['systemctl', 'is-active', 'iwantrun-vpn-web'], 10)
+                    ['systemctl', 'is-active', brand.SERVICE_WEB], 10)
             if code != 0:
                 print(f'数据已恢复，但面板没有正常运行：{err or out}。'
-                      '可运行 journalctl -u iwantrun-vpn-web 查看原因。', file=sys.stderr)
+                      f'可运行 journalctl -u {brand.SERVICE_WEB} 查看原因。', file=sys.stderr)
                 return 1
     print('数据已恢复，所有旧的管理登录已失效。')
     if moved_from:

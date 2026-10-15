@@ -7,7 +7,7 @@ from datetime import datetime
 from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import RedirectResponse
 
-from .. import db, singbox, system_ops
+from .. import brand, db, singbox, system_ops
 from ..db import log_action, verify_admin
 from ..web import (LOGIN_VERIFY_SLOTS, apply_config, csrf_token, login_blocked, login_url,
                    notices, preview_mode, record_login, redirect_with_message,
@@ -19,7 +19,7 @@ USERNAME_RE = re.compile(r'^[A-Za-z0-9_]{1,32}$')
 
 
 def _update_status():
-    # Written by `renrenvpn update` running as root in iwantrun-vpn-update.service.
+    # 由以 root 运行的更新服务写入（brand.SERVICE_UPDATE）。
     try:
         status = json.loads(db.get_setting('update_status') or '{}')
     except ValueError:
@@ -114,7 +114,7 @@ def change_account(request: Request, user: str = Depends(require_user), _: None 
     db.bump_session_epoch()
     log_action('change account', username)
     resp = RedirectResponse(login_url(), 302)
-    resp.delete_cookie('renrenvpn_session')
+    resp.delete_cookie(SESSION_COOKIE)
     return resp
 
 
@@ -209,7 +209,7 @@ def change_server(request: Request, user: str = Depends(require_user), _: None =
                 and host != before.get('public_host')):
             return redirect_with_message(
                 '/settings',
-                error='更换公网 IP 还需要重新签发面板证书。请先 SSH 运行 renrenvpn set-host，'
+                error=f'更换公网 IP 还需要重新签发面板证书。请先 SSH 运行 {brand.CLI_NAME} set-host，'
                       '再立即重跑安装器；网页中不会只改一半。')
         updates = {
             'public_host': host,

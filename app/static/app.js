@@ -226,7 +226,7 @@ document.querySelectorAll("form[data-confirm], form[data-wait-form]").forEach((f
       /* The panel is restarting during the update. */
     }
     if (Date.now() > deadline) {
-      return finish("更新没有完成", "等了 20 分钟仍没有结果。请稍后打开设置页查看，或 SSH 运行 renrenvpn update 查看原因。");
+      return finish("更新没有完成", "等了 20 分钟仍没有结果。请稍后打开设置页查看，或 SSH 运行 nodepanel update 查看原因。");
     }
     setTimeout(poll, 5000);
   }

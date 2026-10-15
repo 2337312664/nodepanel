@@ -33,7 +33,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent
 PRIVATE_KEY = ROOT / 'nodepanel-release-private.pem'
 PUBLIC_KEY = ROOT / 'app' / 'release-public-key.pem'
-PANEL_ZIP = ROOT / 'app'                     # 打进面板包的目录
+# 面板源码包要包含的顶层条目：安装器会检查 app/ 与 requirements.txt 是否存在。
+PANEL_ITEMS = ('app', 'requirements.txt', 'requirements.lock')
 
 # 与安装器里的 ACME 摘要策略一致：单文件 ≤ 64MB。
 MAX_ASSET = 64 * 1024 * 1024
@@ -101,15 +102,25 @@ def sha256_file(path):
 
 
 def _collect_sources(dst):
-    """把面板源码拷进临时目录，并剔除不该进包的东西。"""
+    """把面板源码拷进临时目录，并剔除不该进包的东西。
+
+    包内必须同时有 app/ 与 requirements.txt —— 安装器据此识别源码根目录。
+    """
     if dst.exists():
         shutil.rmtree(dst)
-    shutil.copytree(PANEL_ZIP, dst)
-    # 清理构建产物与缓存，避免把无用文件打进去
-    for junk in ('__pycache__', 'release-public-key.pem.bak'):
-        for path in list(dst.rglob(junk)):
-            shutil.rmtree(path, ignore_errors=True) if path.is_dir() else path.unlink()
-    for path in dst.rglob('*.pyc'):
+    dst.mkdir(parents=True)
+    for item in PANEL_ITEMS:
+        src = ROOT / item
+        if not src.exists():
+            sys.exit(f'缺少必需文件：{item}')
+        if src.is_dir():
+            shutil.copytree(src, dst / item)
+        else:
+            shutil.copy2(src, dst / item)
+    # 清理构建产物与缓存
+    for path in list(dst.rglob('__pycache__')):
+        shutil.rmtree(path, ignore_errors=True)
+    for path in list(dst.rglob('*.pyc')):
         path.unlink()
     return dst
 
